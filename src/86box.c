@@ -493,6 +493,7 @@ usage:
             printf("-H or --hwnd id,hwnd - sends back the main dialog's hwnd\n");
 #endif
             printf("-I or --image d:path - load 'path' as floppy image on drive d\n");
+            printf("-J or --dumpjson     - dump hardware list as a json file\n");
             printf("-L or --logfile path - set 'path' to be the logfile\n");
             printf("-N or --noconfirm    - do not ask for confirmation on quit\n");
             printf("-O or --dumpcfg      - dump config file after loading\n");
@@ -502,6 +503,9 @@ usage:
             printf("-V or --vmname name  - overrides the name of the running VM\n");
             printf("-Z or --lastvmpath   - the last parameter is VM path rather than config\n");
             printf("\nA config file can be specified. If none is, the default file will be used.\n");
+            return 0;
+        } else if (!strcasecmp(argv[c], "--dumpjson") || !strcasecmp(argv[c], "-J")) {
+            config_dump_json();
             return 0;
         } else if (!strcasecmp(argv[c], "--lastvmpath") || !strcasecmp(argv[c], "-Z")) {
             lvmp = 1;

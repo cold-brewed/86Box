@@ -164,6 +164,8 @@ extern void *config_get_ini(void);
 #define config_find_section(name)           ini_find_section(config_get_ini(), name)
 #define config_rename_section               ini_rename_section
 
+void config_dump_json(void);
+
 #ifdef __cplusplus
 }
 #endif

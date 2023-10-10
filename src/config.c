@@ -72,11 +72,13 @@
 #include <86box/midi.h>
 #include <86box/snd_mpu401.h>
 #include <86box/video.h>
+#include <86box/version.h>
 #include <86box/path.h>
 #include <86box/plat.h>
 #include <86box/plat_dir.h>
 #include <86box/ui.h>
 #include <86box/snd_opl.h>
+#include <86box/cJSON.h>
 
 static int   cx;
 static int   cy;
@@ -3124,4 +3126,198 @@ ini_t
 config_get_ini(void)
 {
     return config;
+}
+
+void config_dump_json(void) {
+
+    char *string = NULL;
+    cJSON *json_machines = NULL;
+    cJSON *json_cpus = NULL;
+    cJSON *hardware = cJSON_CreateObject();
+    cJSON *cpu_types = cJSON_CreateObject();
+
+    char *json_emu_version = EMU_VERSION_FULL;
+    if (cJSON_AddStringToObject(hardware, "version", json_emu_version) == NULL) {
+        goto end;
+    }
+
+    json_machines = cJSON_AddArrayToObject(hardware, "machine");
+    if (hardware == NULL) {
+        goto end;
+    }
+
+    for (int machine_type_index = 1; machine_type_index < MACHINE_TYPE_MAX; ++machine_type_index) {
+        int machine_index = 0;
+        while (machine_get_internal_name_ex(machine_index) != NULL) {
+            /* First, hardware info */
+            if ((machine_get_type(machine_index) == machine_type_index)) {
+                cJSON *a_machine = cJSON_CreateObject();
+
+                if (cJSON_AddStringToObject(a_machine, "name", machine_get_internal_name_ex(machine_index)) == NULL) {
+                    goto end;
+                }
+
+                if (cJSON_AddStringToObject(a_machine, "display_name", machines[machine_index].name) == NULL) {
+                    goto end;
+                }
+
+                if (cJSON_AddStringToObject(a_machine, "type", machine_types[machine_type_index].name) == NULL) {
+                    goto end;
+                }
+
+                if (cJSON_AddStringToObject(a_machine, "chipset", machine_chipsets[machines[machine_index].chipset].name) == NULL) {
+                    goto end;
+                }
+
+                if (cJSON_AddNumberToObject(a_machine, "ram_granularity", machine_get_ram_granularity(machine_index)) == NULL) {
+                    goto end;
+                }
+
+                if (cJSON_AddNumberToObject(a_machine, "min_ram", machine_get_min_ram(machine_index)) == NULL) {
+                    goto end;
+                }
+
+                if (cJSON_AddNumberToObject(a_machine, "max_ram", machine_get_max_ram(machine_index)) == NULL) {
+                    goto end;
+                }
+
+                /* Eligible CPU families */
+                int cpu_i = 0;
+
+                cJSON *json_cpu_families = NULL;
+
+                json_cpu_families = cJSON_AddArrayToObject(a_machine, "cpu_families");
+
+                while (cpu_families[cpu_i].package != 0) {
+                    if (cpu_family_is_eligible(&cpu_families[cpu_i], machine_index)) {
+                        char BUF[256];
+                        snprintf(BUF, sizeof(BUF), "%s %s",cpu_families[cpu_i].manufacturer, cpu_families[cpu_i].name);
+                        cJSON *cpu_item = cJSON_CreateString(cpu_families[cpu_i].internal_name);
+                        cJSON_AddItemToArray(json_cpu_families, cpu_item);
+                    }
+                    ++cpu_i;
+                }
+                cJSON_AddItemToArray(json_machines, a_machine);
+            }
+            machine_index++;
+        }
+
+
+
+    }
+
+    /* CPUs */
+    /* Eligible CPU families */
+    int cpu_i = 0;
+
+    cJSON *json_cpu_families = NULL;
+
+    json_cpu_families = cJSON_AddArrayToObject(hardware, "cpu");
+    if (json_cpu_families == NULL) {
+        goto end;
+    }
+
+    while (cpu_families[cpu_i].package != 0) {
+        cJSON *a_cpu = cJSON_CreateObject();
+        char BUF[256];
+        cJSON *json_cpu_speeds = NULL;
+
+        json_cpu_speeds = cJSON_AddArrayToObject(a_cpu, "speeds");
+        if (json_cpu_speeds == NULL) {
+            goto end;
+        }
+        snprintf(BUF, sizeof(BUF), "%s %s",cpu_families[cpu_i].manufacturer, cpu_families[cpu_i].name);
+
+        cJSON_AddStringToObject(a_cpu, "display_name", BUF);
+        cJSON_AddStringToObject(a_cpu, "manufacturer", cpu_families[cpu_i].manufacturer);
+        cJSON_AddStringToObject(a_cpu, "name", cpu_families[cpu_i].name);
+        cJSON_AddStringToObject(a_cpu, "internal_name", cpu_families[cpu_i].internal_name);
+        cJSON_AddItemToArray(json_cpu_families, a_cpu);
+        int speed_i = 0;
+        while (cpu_families[cpu_i].cpus[speed_i].cpu_type != 0) {
+            cJSON *speed_string = NULL;
+            speed_string = cJSON_CreateString(cpu_families[cpu_i].cpus[speed_i].name);
+            cJSON_AddItemToArray(json_cpu_speeds, speed_string);
+            ++speed_i;
+        }
+        ++cpu_i;
+    }
+
+    /* Video */
+    int video_i = 0;
+
+    cJSON *json_video_families = NULL;
+
+    json_video_families = cJSON_AddArrayToObject(hardware, "video");
+    if (json_video_families == NULL) {
+        goto end;
+    }
+
+    while(1) {
+        cJSON *video_card = cJSON_CreateObject();
+
+        char BUF[256];
+        snprintf(BUF, sizeof(BUF), "%s", video_get_internal_name(video_i));
+
+        if (strnlen(BUF, sizeof(BUF)) == 0) {
+            break;
+        }
+        const device_t *video_dev = video_card_getdevice(video_i);
+        cJSON_AddStringToObject(video_card, "name", BUF);
+
+        device_get_name(video_dev, 1, BUF);
+        if (strnlen(BUF, sizeof(BUF)) > 0) {
+            cJSON_AddStringToObject(video_card, "display_name", BUF);
+        } else {
+            cJSON_AddStringToObject(video_card, "display_name", "unavailable");
+        }
+        cJSON_AddItemToArray(json_video_families, video_card);
+        video_i++;
+    }
+
+
+    /* Sound */
+
+    int sound_i = 0;
+
+    cJSON *json_sound_families = NULL;
+
+    json_sound_families = cJSON_AddArrayToObject(hardware, "sound");
+    if (json_sound_families == NULL) {
+        goto end;
+    }
+
+    while (1) {
+        cJSON *sound_card = cJSON_CreateObject();
+
+        char BUF[256];
+        snprintf(BUF, sizeof(BUF), "%s", sound_card_get_internal_name(sound_i));
+
+        if (strnlen(BUF, sizeof(BUF)) == 0) {
+            break;
+        }
+        cJSON_AddStringToObject(sound_card, "name", BUF);
+
+        device_get_name(sound_card_getdevice(sound_i), 1, BUF);
+        if (strnlen(BUF, sizeof(BUF)) > 0) {
+            cJSON_AddStringToObject(sound_card, "display_name", BUF);
+        } else {
+            cJSON_AddStringToObject(sound_card, "display_name", "unavailable");
+        }
+
+        cJSON_AddItemToArray(json_sound_families, sound_card);
+
+        sound_i++;
+    }
+
+    string = cJSON_Print(hardware);
+    if (string == NULL)
+    {
+        fprintf(stderr, "Failed to print hardware.\n");
+    } else {
+        printf("%s", string);
+    }
+
+end:
+    cJSON_Delete(hardware);
 }
