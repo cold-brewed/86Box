@@ -439,6 +439,9 @@ jobs:
           openal-soft
           fluidsynth
           libvncserver
+          libslirp
+          vde
+          ghostscript
           ${{ matrix.ui.packages }}
 
       - name: Checkout repository
