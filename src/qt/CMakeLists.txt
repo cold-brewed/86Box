@@ -180,6 +180,29 @@ add_library(ui STATIC
     qt_mediahistorymanager.cpp
     qt_mediahistorymanager.hpp
 
+    qt_vmmanager_clientsocket.cpp
+    qt_vmmanager_clientsocket.hpp
+    qt_vmmanager_serversocket.cpp
+    qt_vmmanager_serversocket.hpp
+    qt_vmmanager_protocol.cpp
+    qt_vmmanager_protocol.hpp
+    qt_vmmanager_details.hpp
+    qt_vmmanager_details.cpp
+    qt_vmmanager_details.ui
+    qt_vmmanager_details_section.cpp
+    qt_vmmanager_details_section.hpp
+    qt_vmmanager_listviewdelegate.hpp
+    qt_vmmanager_listviewdelegate.cpp
+    qt_vmmanager_main.hpp
+    qt_vmmanager_main.cpp
+    qt_vmmanager_main.ui
+    qt_vmmanager_model.cpp
+    qt_vmmanager_model.hpp
+    qt_vmmanager_system.cpp
+    qt_vmmanager_system.hpp
+    qt_vmmanager_config.cpp
+    qt_vmmanager_config.hpp
+
     ../qt_resources.qrc
 )
 

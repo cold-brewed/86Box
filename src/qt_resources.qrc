@@ -62,4 +62,13 @@
         <file alias="/texture_vert.spv">qt/texture_vert.spv</file>
         <file alias="/texture_frag.spv">qt/texture_frag.spv</file>
     </qresource>
+    <qresource prefix="/vmm">
+        <file alias="/green-square-16.png">qt/icons/green-square-16.png</file>
+        <file alias="/pause-16.png">qt/icons/pause-16.png</file>
+        <file alias="/play-16.png">qt/icons/play-16.png</file>
+        <file alias="/red-square-16.png">qt/icons/red-square-16.png</file>
+        <file alias="/stop-16.png">qt/icons/stop-16.png</file>
+        <file alias="/yellow-square-16.png">qt/icons/yellow-square-16.png</file>
+        <file alias="/red-power-16.png">qt/icons/red-power-16.png</file>
+    </qresource>
 </RCC>
