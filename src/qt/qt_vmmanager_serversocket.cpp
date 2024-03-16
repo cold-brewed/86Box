@@ -129,6 +129,7 @@ VMManagerServerSocket::serverSendMessage(VMManagerProtocol::ManagerMessage proto
     stream.setVersion(QDataStream::Qt_5_7);
     auto packet = new VMManagerProtocol(VMManagerProtocol::Sender::Manager);
     auto jsonMessage = packet->protocolManagerMessage(protocol_message);
+//    qDebug().nospace().noquote() << "Sending message: " << QJsonDocument(jsonMessage).toJson(QJsonDocument::Compact);
     stream << QJsonDocument(jsonMessage).toJson(QJsonDocument::Compact);
 }
 
@@ -163,6 +164,10 @@ VMManagerServerSocket::jsonReceived(const QJsonObject &json)
         case VMManagerProtocol::ClientMessage::WindowUnblocked:
             qDebug("Window unblocked received from client");
             emit windowStatusChanged(static_cast<int>(VMManagerProtocol::WindowStatus::WindowUnblocked));
+            break;
+        case VMManagerProtocol::ClientMessage::VMMScreenshotAck:
+            qDebug("VM manager screenshot ack received from client");
+            emit clientScreenshotAck();
             break;
         case VMManagerProtocol::ClientMessage::RunningStateChanged:
             qDebug("Running state change received from client");

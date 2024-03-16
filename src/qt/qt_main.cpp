@@ -352,11 +352,13 @@ main(int argc, char *argv[])
         QObject::connect(&manager_socket, &VMManagerClientSocket::showsettings, main_window, &MainWindow::showSettings);
         QObject::connect(&manager_socket, &VMManagerClientSocket::ctrlaltdel, []() { pc_send_cad(); });
         QObject::connect(&manager_socket, &VMManagerClientSocket::request_shutdown, main_window, &MainWindow::close);
+        QObject::connect(&manager_socket, &VMManagerClientSocket::requestVMMScreenshot, main_window, &MainWindow::vmManagerScreenshot);
         QObject::connect(&manager_socket, &VMManagerClientSocket::force_shutdown, []() {
             do_stop();
             emit main_window->close();
         });
         QObject::connect(main_window, &MainWindow::vmmRunningStateChanged, &manager_socket, &VMManagerClientSocket::clientRunningStateChanged);
+        QObject::connect(main_window, &MainWindow::vmmScreenshotTaken, &manager_socket, &VMManagerClientSocket::vmmScreenshotAck);
         main_window->installEventFilter(&manager_socket);
     }
 

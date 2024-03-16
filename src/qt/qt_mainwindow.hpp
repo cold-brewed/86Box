@@ -60,6 +60,7 @@ signals:
     void getTitleForNonQtThread(wchar_t *title);
 
     void vmmRunningStateChanged(VMManagerProtocol::RunningState state);
+    void vmmScreenshotTaken();
 public slots:
     void showSettings();
     void hardReset();
@@ -67,6 +68,7 @@ public slots:
     void initRendererMonitorSlot(int monitor_index);
     void destroyRendererMonitorSlot(int monitor_index);
     void updateUiPauseState();
+    void vmManagerScreenshot();
 private slots:
     void on_actionFullscreen_triggered();
     void on_actionSettings_triggered();

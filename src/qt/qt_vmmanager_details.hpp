@@ -19,6 +19,7 @@
 #define QT_VMMANAGER_DETAILS_H
 
 #include <QWidget>
+#include <QTimer>
 #include "qt_vmmanager_system.hpp"
 #include "qt_vmmanager_details_section.hpp"
 
@@ -41,6 +42,8 @@ public:
     void updateProcessStatus();
 
     void updateWindowStatus();
+
+    void processScreenshotAck();
 //    CollapseButton *systemCollapseButton;
 
 private:
@@ -53,6 +56,13 @@ private:
     VMManagerDetailsSection *audioSection;
 
     QVBoxLayout *detailsLayout;
+
+    QTimer *detail_updates;
+    void updateScreenshot();
+    bool hasRunningProcess();
+
+private slots:
+    void timerUpdates();
 
 //    CollapseButton *systemCollapseButton;
 //    QFrame *systemFrame;

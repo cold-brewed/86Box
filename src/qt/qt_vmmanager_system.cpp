@@ -127,8 +127,27 @@ VMManagerSystem::getScreenshots() {
         return {};
     }
 
+    // TODO: Configurable. If the real-time screenshot feature is disabled,
+    // instead skip this part and used the regular logic below to find Monitor_1*
+
+    // For now, to reduce overhead, it will only return `vmm.png` if it exists
+    // as opposed to scanning
+    auto vmm_screenshot = screenshot_directory.path() + "/vmm.png";
+    if(QFileInfo::exists(vmm_screenshot)) {
+        QFileInfoList vmm_screen_only;
+        vmm_screen_only.append(vmm_screenshot);
+        return vmm_screen_only;
+    }
+
     auto screen_scan_dir = QDir(screenshot_directory.path(), "Monitor_1*", QDir::SortFlag::LocaleAware | QDir::SortFlag::IgnoreCase, QDir::Files);
     auto screenshot_files = screen_scan_dir.entryInfoList();
+
+    // Check for vmm.png and make sure it's last if it exists
+//    auto vmm_screenshot = screenshot_directory.path() + "/vmm.png";
+//    if(QFileInfo::exists(vmm_screenshot)) {
+//        screenshot_files.append(vmm_screenshot);
+//    }
+
     return screenshot_files;
 }
 
@@ -391,6 +410,7 @@ VMManagerSystem::startServer() {
         connect(socket_server, &VMManagerServerSocket::dataReceived, this, &VMManagerSystem::dataReceived);
         connect(socket_server, &VMManagerServerSocket::windowStatusChanged, this, &VMManagerSystem::windowStatusChangeReceived);
         connect(socket_server, &VMManagerServerSocket::runningStatusChanged, this, &VMManagerSystem::runningStatusChangeReceived);
+        connect(socket_server, &VMManagerServerSocket::clientScreenshotAck, this, &VMManagerSystem::clientSnapshotAckReceived);
         return true;
     } else {
         return false;
@@ -415,6 +435,12 @@ void
 VMManagerSystem::pauseButtonPressed() {
     socket_server->serverSendMessage(VMManagerProtocol::ManagerMessage::Pause);
 }
+
+void
+VMManagerSystem::sendClientScreenshotRequest() {
+    socket_server->serverSendMessage(VMManagerProtocol::ManagerMessage::VMMScreenshot);
+}
+
 void
 VMManagerSystem::dataReceived()
 {
@@ -508,4 +534,33 @@ VMManagerSystem::reloadConfig()
 {
     loadSettings();
     setupVars();
+}
+
+bool
+VMManagerSystem::isRunning()
+{
+    // FIXME: Why do I check elsewhere for `sysconfig->process->processId() == 0` instead?
+    return process_status == VMManagerSystem::ProcessStatus::Running;
+}
+
+bool
+VMManagerSystem::isRunningOrPaused()
+{
+    // FIXME: Why do I check elsewhere for `sysconfig->process->processId() == 0` instead?
+    //    return sysconfig->process->state() == QProcess::ProcessState::Running;
+    switch (process_status) {
+        case VMManagerSystem::ProcessStatus::Running:
+        case VMManagerSystem::ProcessStatus::Paused:
+        case VMManagerSystem::ProcessStatus::PausedWaiting:
+        case VMManagerSystem::ProcessStatus::RunningWaiting:
+                return true;
+        default:
+                return false;
+    }
+}
+
+void
+VMManagerSystem::clientSnapshotAckReceived()
+{
+    emit processScreenshotAck();
 }

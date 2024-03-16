@@ -174,6 +174,10 @@ VMManagerClientSocket::jsonReceived(const QJsonObject &json)
             qDebug("ForceShutdown command received from manager");
             emit force_shutdown();
             break;
+        case VMManagerProtocol::ManagerMessage::VMMScreenshot:
+            qDebug("VM manager screenshot command received from manager");
+            emit requestVMMScreenshot();
+            break;
         case VMManagerProtocol::ManagerMessage::RequestStatus:
             qDebug("Status request command received from manager");
             break;
@@ -226,4 +230,9 @@ VMManagerClientSocket::clientRunningStateChanged(VMManagerProtocol::RunningState
     extra_object["status"] = static_cast<int>(state);
     sendMessageWithObject(VMManagerProtocol::ClientMessage::RunningStateChanged, extra_object);
 
+}
+void
+VMManagerClientSocket::vmmScreenshotAck()
+{
+    sendMessage(VMManagerProtocol::ClientMessage::VMMScreenshotAck);
 }

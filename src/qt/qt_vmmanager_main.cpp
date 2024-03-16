@@ -139,6 +139,14 @@ VMManagerMain::shutdownButtonPressed()
     selected_sysconfig->shutdownButtonPressed();
 }
 void
+VMManagerMain::testButtonPressed()
+{
+    if(!selected_sysconfig) {
+        return;
+    }
+    selected_sysconfig->sendClientScreenshotRequest();
+}
+void
 VMManagerMain::refresh()
 {
     ui->startStopButton->disconnect();

@@ -91,7 +91,10 @@ public:
     void restartButtonPressed();
     void pauseButtonPressed();
     void shutdownButtonPressed();
+    void sendClientScreenshotRequest();
     void reloadConfig();
+    bool isRunning();
+    bool isRunningOrPaused();
 
     QProcess *process = new QProcess();
 
@@ -114,6 +117,7 @@ public:
 signals:
     void windowStatusChanged();
     void itemDataChanged();
+    void processScreenshotAck();
 
 private:
     void loadSettings();
@@ -148,6 +152,7 @@ private:
     void dataReceived();
     void windowStatusChangeReceived(int status);
     void runningStatusChangeReceived(VMManagerProtocol::RunningState state);
+    void clientSnapshotAckReceived();
     void processStatusChanged();
     void statusRefresh();
 };

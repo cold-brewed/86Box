@@ -421,6 +421,9 @@ RendererStack::blit(int x, int y, int w, int h)
     if (monitors[m_monitor_index].mon_screenshots) {
         video_screenshot_monitor((uint32_t *) imagebits, x, y, 2048, m_monitor_index);
     }
+    if (monitors[m_monitor_index].mon_vmm_screenshots) {
+        video_screenshot_vmm((uint32_t *) imagebits, x, y, 2048);
+    }
     video_blit_complete_monitor(m_monitor_index);
     emit blitToRenderer(currentBuf, sx, sy, sw, sh);
     currentBuf = (currentBuf + 1) % imagebufs.size();

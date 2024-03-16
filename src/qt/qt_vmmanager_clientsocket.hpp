@@ -40,9 +40,11 @@ signals:
     void request_shutdown();
     void force_shutdown();
     void dialogstatus(bool open);
+    void requestVMMScreenshot();
 
 public slots:
     void clientRunningStateChanged(VMManagerProtocol::RunningState state);
+    void vmmScreenshotAck();
 
 private:
 //    QLocalServer *server;

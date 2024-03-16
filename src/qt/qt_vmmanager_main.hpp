@@ -63,6 +63,7 @@ private:
     void shutdownButtonPressed();
     void refresh();
     void addButtonPressed();
+    void testButtonPressed();
 };
 
 #endif //QT_VMMANAGER_MAIN_H

@@ -30,6 +30,7 @@ VMManagerDetails::VMManagerDetails(QWidget *parent) :
 //    detailsLayout = new QVBoxLayout();
 //    ui->detailsFrame
 //    ui->detailsFrame->setLayout(detailsLayout);
+    detail_updates = new QTimer;
 
 
     systemSection = new VMManagerDetailsSection(tr("System", "Header for System section in VM Manager Details"));
@@ -60,11 +61,7 @@ VMManagerDetails::updateData(VMManagerSystem *passed_sysconfig) {
 
     sysconfig = passed_sysconfig;
 
-//    ui->machineLabel->setText(passed_sysconfig->getDisplayValue(Display::Name::Machine));
-//    ui->cpuLabel->setText(passed_sysconfig->getDisplayValue(Display::Name::CPU));
-//    ui->memoryLabel->setText(passed_sysconfig->getDisplayValue(Display::Name::Memory));
-//    ui->videoCardLabel->setText(passed_sysconfig->getDisplayValue(Display::Name::Video));
-//    ui->drivesLabel->setText(passed_sysconfig->getDisplayValue(Display::Name::Disks));
+    // Populate each section for VM details
 
     // System
     systemSection->clear();
@@ -87,7 +84,68 @@ VMManagerDetails::updateData(VMManagerSystem *passed_sysconfig) {
     audioSection->clear();
     audioSection->addSection("Audio", passed_sysconfig->getDisplayValue(Display::Name::Audio));
 
-    auto screenshots = passed_sysconfig->getScreenshots();
+    updateScreenshot();
+
+    // General timer to process updates in this view
+    disconnect(detail_updates, &QTimer::timeout, this, &VMManagerDetails::timerUpdates);
+    connect(detail_updates, &QTimer::timeout, this, &VMManagerDetails::timerUpdates);
+    detail_updates->setTimerType(Qt::CoarseTimer);
+    detail_updates->start(2000);
+
+
+    // Signals for process status changes
+    ui->systemLabel->setText(passed_sysconfig->config_name);
+    ui->moreLabel->setText(sysconfig->process->processId() == 0 ? "Not running" : QString::asprintf("Running: PID %lli", sysconfig->process->processId()));
+    disconnect(sysconfig->process, &QProcess::stateChanged, this, &VMManagerDetails::updateProcessStatus);
+    connect(sysconfig->process, &QProcess::stateChanged, this, &VMManagerDetails::updateProcessStatus);
+
+    // Signals for when the client acknowledges a screenshot request
+    disconnect(sysconfig, &VMManagerSystem::processScreenshotAck, this, &VMManagerDetails::processScreenshotAck);
+    connect(sysconfig, &VMManagerSystem::processScreenshotAck, this, &VMManagerDetails::processScreenshotAck);
+
+    // Signals for windows status updates received from the client
+    disconnect(sysconfig, &VMManagerSystem::windowStatusChanged, this, &VMManagerDetails::updateWindowStatus);
+    connect(sysconfig, &VMManagerSystem::windowStatusChanged, this, &VMManagerDetails::updateWindowStatus);
+    updateProcessStatus();
+}
+
+void
+VMManagerDetails::updateProcessStatus() {
+    bool running = sysconfig->process->state() == QProcess::ProcessState::Running;
+    QString status_text = running ? QString::asprintf("Running: PID %lli", sysconfig->process->processId()) : "Not running";
+    status_text.append(sysconfig->window_obscured ? " (waiting)" : "");
+    ui->moreLabel->setText(status_text);
+}
+
+bool
+VMManagerDetails::hasRunningProcess()
+{
+    // FIXME: Why do I check elsewhere for `sysconfig->process->processId() == 0` instead?
+    return sysconfig->process->state() == QProcess::ProcessState::Running;
+}
+
+void
+VMManagerDetails::updateWindowStatus() {
+    qInfo("Window status changed: %i", sysconfig->window_obscured);
+    updateProcessStatus();
+
+}
+void
+VMManagerDetails::timerUpdates()
+{
+    if(sysconfig == nullptr) {
+        return;
+    }
+    updateScreenshot();
+    if(hasRunningProcess()) {
+        sysconfig->sendClientScreenshotRequest();
+    }
+}
+void
+VMManagerDetails::updateScreenshot()
+{
+
+    auto screenshots = sysconfig->getScreenshots();
     if (!screenshots.empty()) {
         ui->screenshot->setFrameStyle(QFrame::NoFrame);
         ui->screenshot->setEnabled(true);
@@ -103,30 +161,10 @@ VMManagerDetails::updateData(VMManagerSystem *passed_sysconfig) {
         ui->screenshot->setEnabled(false);
         ui->screenshot->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
     }
-
-    ui->systemLabel->setText(passed_sysconfig->config_name);
-    ui->moreLabel->setText(sysconfig->process->processId() == 0 ? "Not running" : QString::asprintf("Running: PID %lli", sysconfig->process->processId()));
-    disconnect(sysconfig->process, &QProcess::stateChanged, this, &VMManagerDetails::updateProcessStatus);
-    connect(sysconfig->process, &QProcess::stateChanged, this, &VMManagerDetails::updateProcessStatus);
-
-    disconnect(sysconfig, &VMManagerSystem::windowStatusChanged, this, &VMManagerDetails::updateWindowStatus);
-    connect(sysconfig, &VMManagerSystem::windowStatusChanged, this, &VMManagerDetails::updateWindowStatus);
-    updateProcessStatus();
 }
-
 void
-VMManagerDetails::updateProcessStatus() {
-    bool running = sysconfig->process->state() == QProcess::ProcessState::Running;
-    QString status_text = running ? QString::asprintf("Running: PID %lli", sysconfig->process->processId()) : "Not running";
-    status_text.append(sysconfig->window_obscured ? " (waiting)" : "");
-    ui->moreLabel->setText(status_text);
+VMManagerDetails::processScreenshotAck()
+{
+//    qDebug() << "Processing screenshot ack";
+    QTimer::singleShot(1000, this, &VMManagerDetails::updateScreenshot);
 }
-
-
-void
-VMManagerDetails::updateWindowStatus() {
-    qInfo("Window status changed: %i", sysconfig->window_obscured);
-    updateProcessStatus();
-
-}
-

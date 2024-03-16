@@ -43,6 +43,7 @@ public:
         ResetVM,
         RequestShutdown,
         ForceShutdown,
+        VMMScreenshot,
         UnknownMessage,
     };
 
@@ -54,6 +55,7 @@ public:
         WindowBlocked,
         WindowUnblocked,
         RunningStateChanged,
+        VMMScreenshotAck,
         UnknownMessage,
     };
     Q_ENUM(ClientMessage);

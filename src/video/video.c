@@ -418,6 +418,31 @@ video_screenshot(uint32_t *buf, int start_x, int start_y, int row_len)
     video_screenshot_monitor(buf, start_x, start_y, row_len, 0);
 }
 
+void
+video_screenshot_vmm(uint32_t *buf, int start_x, int start_y, int row_len)
+{
+    // For this purpose we only care about the first monitor (for now)
+    int monitor_index = 0;
+    char path[1024], fn[256];
+
+    memset(fn, 0, sizeof(fn));
+    memset(path, 0, sizeof(path));
+
+    path_append_filename(path, usr_path, SCREENSHOT_PATH);
+
+    if (!plat_dir_check(path))
+        plat_dir_create(path);
+
+    path_slash(path);
+    strcat(path, "vmm.png");
+    video_log("taking vm manager screenshot to: %s\n", path);
+
+    video_take_screenshot_monitor((const char *) path, buf, start_x, start_y, row_len, monitor_index);
+    png_destroy_write_struct(&png_ptr[monitor_index], &info_ptr[monitor_index]);
+
+    atomic_fetch_sub(&monitors[monitor_index].mon_vmm_screenshots, 1);
+}
+
 #ifdef _WIN32
 void *__cdecl video_transform_copy(void *_Dst, const void *_Src, size_t _Size)
 #else

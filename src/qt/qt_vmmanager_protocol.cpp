@@ -91,6 +91,8 @@ VMManagerProtocol::getClientMessageType(const QJsonObject &json_document)
         return VMManagerProtocol::ClientMessage::WindowUnblocked;
     } else if (message_type == "RunningStateChanged") {
         return VMManagerProtocol::ClientMessage::RunningStateChanged;
+    } else if (message_type == "VMMScreenshotAck") {
+        return VMManagerProtocol::ClientMessage::VMMScreenshotAck;
     }
     return VMManagerProtocol::ClientMessage::UnknownMessage;
 }
@@ -115,6 +117,8 @@ VMManagerProtocol::getManagerMessageType(const QJsonObject &json_document)
         return VMManagerProtocol::ManagerMessage::RequestShutdown;
     } if (message_type == "ForceShutdown") {
         return VMManagerProtocol::ManagerMessage::ForceShutdown;
+    } if (message_type == "VMMScreenshot") {
+        return VMManagerProtocol::ManagerMessage::VMMScreenshot;
     }
     return VMManagerProtocol::ManagerMessage::UnknownMessage;
 }

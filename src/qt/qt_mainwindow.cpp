@@ -1854,6 +1854,17 @@ MainWindow::on_actionTake_screenshot_triggered()
 }
 
 void
+MainWindow::vmManagerScreenshot()
+{
+    startblit();
+    // We only care about the first monitor
+    monitors[0].mon_vmm_screenshots++;
+    endblit();
+    device_force_redraw();
+    emit vmmScreenshotTaken();
+}
+
+void
 MainWindow::on_actionSound_gain_triggered()
 {
     SoundGain gain(this);

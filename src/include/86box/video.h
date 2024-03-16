@@ -123,6 +123,7 @@ typedef struct monitor_t {
     int                      mon_fullchange;
     int                      mon_changeframecount;
     atomic_int               mon_screenshots;
+    atomic_int               mon_vmm_screenshots;
     uint32_t                *mon_pal_lookup;
     int                     *mon_cga_palette;
     int                      mon_pal_lookup_static;  /* Whether it should not be freed by the API. */
@@ -221,6 +222,7 @@ extern int    xga_active;
 extern void (*video_recalctimings)(void);
 extern void video_screenshot_monitor(uint32_t *buf, int start_x, int start_y, int row_len, int monitor_index);
 extern void video_screenshot(uint32_t *buf, int start_x, int start_y, int row_len);
+extern void video_screenshot_vmm(uint32_t *buf, int start_x, int start_y, int row_len);
 
 #ifdef _WIN32
 extern void *__cdecl (*video_copy)(void *_Dst, const void *_Src, size_t _Size);
