@@ -216,6 +216,12 @@ load_general(void)
         strncpy(uuid, p, sizeof(uuid) - 1);
     else
         strncpy(uuid, "", sizeof(uuid) - 1);
+
+    p = ini_section_get_string(cat, "release_shortcut", NULL);
+    if (p != NULL)
+        strncpy(release_shortcut, p, sizeof(release_shortcut) - 1);
+    else
+        strncpy(release_shortcut, "", sizeof(release_shortcut) - 1);
 }
 
 /* Load monitor section. */
@@ -1888,10 +1894,15 @@ save_general(void)
     else
         ini_section_delete_var(cat, "emu_build_num");
 
-  if (strnlen(uuid, sizeof(uuid) - 1) > 0)
+    if (strnlen(uuid, sizeof(uuid) - 1) > 0)
         ini_section_set_string(cat, "uuid", uuid);
     else
         ini_section_delete_var(cat, "uuid");
+
+    if (strnlen(release_shortcut, sizeof(release_shortcut) - 1) > 0)
+        ini_section_set_string(cat, "release_shortcut", release_shortcut);
+    else
+        ini_section_delete_var(cat, "release_shortcut");
 
     ini_delete_section_if_empty(config, cat);
 }

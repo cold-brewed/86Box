@@ -38,6 +38,9 @@
 /* Max UUID Length */
 #define MAX_UUID_LEN 64
 
+/* Keyboard shortcut text */
+#define MAX_KEYBOARD_SHORTCUT_LEN 64
+
 /* Default language 0xFFFF = from system, 0x409 = en-US */
 #define DEFAULT_LANGUAGE 0x0409
 
@@ -177,6 +180,7 @@ extern char usr_path[1024];     /* path (dir) of user data */
 extern char cfg_path[1024];     /* full path of config file */
 extern int  open_dir_usr_path;  /* default file open dialog directory of usr_path */
 extern char uuid[MAX_UUID_LEN]; /* UUID or machine identifier */
+extern char release_shortcut[MAX_KEYBOARD_SHORTCUT_LEN]; /* Portable text representation of the keyboard shortcut */
 #ifndef USE_NEW_DYNAREC
 extern FILE *stdlog; /* file to log output to */
 #endif

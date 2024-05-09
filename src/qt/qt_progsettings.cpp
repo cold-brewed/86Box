@@ -21,6 +21,7 @@
 #include "qt_mainwindow.hpp"
 #include "ui_qt_mainwindow.h"
 #include "qt_machinestatus.hpp"
+#include "qt_shortcuts.hpp"
 
 #include <QMap>
 #include <QDir>
@@ -115,6 +116,26 @@ ProgSettings::ProgSettings(QWidget *parent)
     mouseSensitivity = mouse_sensitivity;
     ui->horizontalSlider->setValue(mouseSensitivity * 100.);
     ui->openDirUsrPath->setChecked(open_dir_usr_path > 0);
+    if(!QString(release_shortcut).isEmpty()) {
+        // Note that the format from KeyShortcuts::formatSequence() is not the
+        // format that will be stored in the config file
+        ui->releaseShortcut->setText(KeyShortcuts::formatSequence(release_shortcut));
+    }
+    connect(ui->setReleaseShortcut, &QPushButton::clicked, [this] {
+        QString existingShortcut = release_shortcut;
+        if(release_shortcut != portableReleaseShortcut && !portableReleaseShortcut.isEmpty()) {
+            // The new shortcut has been set but not applied
+            existingShortcut = portableReleaseShortcut;
+        }
+        const auto shortcuts = new KeyShortcuts(existingShortcut, this);
+        shortcuts->exec();
+        if (shortcuts->result() == Accepted) {
+            // Printable (formatted) shortcut is displayed
+            ui->releaseShortcut->setText(shortcuts->getPrintableShortcut());
+            // The portable one will be stored in the config
+            portableReleaseShortcut = shortcuts->getPortableShortcut();
+        }
+    });
 }
 
 void
@@ -124,6 +145,11 @@ ProgSettings::accept()
     lang_id           = ui->comboBoxLanguage->currentData().toUInt();
     open_dir_usr_path = ui->openDirUsrPath->isChecked() ? 1 : 0;
 
+    // It is important that the shortcut updates take place before reloadStrings()
+    if(!ui->releaseShortcut->text().isEmpty()) {
+        qstrncpy(release_shortcut, portableReleaseShortcut.toUtf8().constData(), sizeof(release_shortcut));
+        main_window->setKeyboardShortcuts();
+    }
     loadTranslators(QCoreApplication::instance());
     reloadStrings();
     update_mouse_msg();

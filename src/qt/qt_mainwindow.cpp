@@ -662,6 +662,7 @@ MainWindow::MainWindow(QWidget *parent)
     setContextMenuPolicy(Qt::PreventContextMenu);
     /* Remove default Shift+F10 handler, which unfocuses keyboard input even with no context menu. */
     connect(new QShortcut(QKeySequence(Qt::SHIFT + Qt::Key_F10), this), &QShortcut::activated, this, [](){});
+    setKeyboardShortcuts();
 
     connect(this, &MainWindow::initRendererMonitor, this, &MainWindow::initRendererMonitorSlot);
     connect(this, &MainWindow::initRendererMonitorForNonQtThread, this, &MainWindow::initRendererMonitorSlot, Qt::BlockingQueuedConnection);
@@ -2041,4 +2042,22 @@ void MainWindow::on_actionPen_triggered()
 void MainWindow::on_actionACPI_Shutdown_triggered()
 {
     acpi_pwrbut_pressed = 1;
+}
+
+void
+MainWindow::setKeyboardShortcuts()
+{
+    // Disconnect old signal if set
+    if(releaseShortcutConnection) {
+        disconnect(releaseShortcutConnection);
+        releaseShortcutConnection = QMetaObject::Connection();
+    }
+    // Make sure the release shortcut exists and is valid
+    if(!QString(release_shortcut).isEmpty() && !QKeySequence(release_shortcut).isEmpty()) {
+        const auto shortcut = new QShortcut(QKeySequence(release_shortcut), this);
+        releaseShortcutConnection = connect(shortcut, &QShortcut::activated, this, [this] {
+            qDebug() << "custom shortcut release!";
+            emit setMouseCapture(false);
+        });
+    }
 }

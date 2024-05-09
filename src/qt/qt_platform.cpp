@@ -48,6 +48,7 @@
 #include "qt_mainwindow.hpp"
 #include "qt_progsettings.hpp"
 #include "qt_util.hpp"
+#include "qt_shortcuts.hpp"
 
 #ifdef Q_OS_UNIX
 #    include <pthread.h>
@@ -594,15 +595,22 @@ c16stombs(char dst[], const uint16_t src[], int len)
 #    define MOUSE_CAPTURE_KEYSEQ "Ctrl+End"
 #endif
 
+#ifdef Q_OS_MACOS
+#   define SHORTCUT_JOIN_STRING  " "
+#else
+#   define SHORTCUT_JOIN_STRING  "+"
+#endif
+
 QMap<int, std::wstring> ProgSettings::translatedstrings;
 
 void
 ProgSettings::reloadStrings()
 {
+    const QString releaseKey = QString(release_shortcut).isEmpty() ? MOUSE_CAPTURE_KEYSEQ : KeyShortcuts::portableToNativePrintableList(QString(release_shortcut)).join(SHORTCUT_JOIN_STRING);
     translatedstrings.clear();
     translatedstrings[STRING_MOUSE_CAPTURE]             = QCoreApplication::translate("", "Click to capture mouse").toStdWString();
-    translatedstrings[STRING_MOUSE_RELEASE]             = QCoreApplication::translate("", "Press %1 to release mouse").arg(QCoreApplication::translate("", MOUSE_CAPTURE_KEYSEQ)).toStdWString();
-    translatedstrings[STRING_MOUSE_RELEASE_MMB]         = QCoreApplication::translate("", "Press %1 or middle button to release mouse").arg(QCoreApplication::translate("", MOUSE_CAPTURE_KEYSEQ)).toStdWString();
+    translatedstrings[STRING_MOUSE_RELEASE]             = QCoreApplication::translate("", "Press %1 to release mouse").arg(QCoreApplication::translate("", releaseKey.toUtf8().constData())).toStdWString();
+    translatedstrings[STRING_MOUSE_RELEASE_MMB]         = QCoreApplication::translate("", "Press %1 or middle button to release mouse").arg(QCoreApplication::translate("", releaseKey.toUtf8().constData())).toStdWString();
     translatedstrings[STRING_INVALID_CONFIG]            = QCoreApplication::translate("", "Invalid configuration").toStdWString();
     translatedstrings[STRING_NO_ST506_ESDI_CDROM]       = QCoreApplication::translate("", "MFM/RLL or ESDI CD-ROM drives never existed").toStdWString();
     translatedstrings[STRING_PCAP_ERROR_NO_DEVICES]     = QCoreApplication::translate("", "No PCap devices found").toStdWString();
