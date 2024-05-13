@@ -17,7 +17,9 @@
  *          Copyright 2022 Cacodemon345
  */
 #include "qt_harddiskdialog.hpp"
-#include "ui_qt_harddiskdialog.h"
+#include "qt_deviceconfig.hpp"
+// #include "ui_qt_harddiskdialog.h"
+#include "ui_qt_newharddiskdialog.h"
 
 extern "C" {
 #include <86box/86box.h>
@@ -34,10 +36,12 @@ extern "C" {
 #include <QFile>
 #include <QFileInfo>
 #include <QFileDialog>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QStringBuilder>
-#include <QStringList>
 
 #include "qt_harddrive_common.hpp"
 #include "qt_settings_bus_tracking.hpp"
@@ -49,6 +53,8 @@ HarddiskDialog::HarddiskDialog(bool existing, QWidget *parent)
     , ui(new Ui::HarddiskDialog)
 {
     ui->setupUi(this);
+
+    ui->progressBar->setHidden(true);
 
     auto *model = ui->comboBoxFormat->model();
     model->insertRows(0, 6);
@@ -70,16 +76,23 @@ HarddiskDialog::HarddiskDialog(bool existing, QWidget *parent)
     Harddrives::populateBuses(ui->comboBoxBus->model());
     ui->comboBoxBus->setCurrentIndex(3);
 
-    model = ui->comboBoxType->model();
-    for (int i = 0; i < 127; i++) {
-        uint64_t size    = ((uint64_t) hdd_table[i][0]) * hdd_table[i][1] * hdd_table[i][2];
-        uint32_t size_mb = size >> 11LL;
-        // QString text = QString("%1 MiB (CHS: %2, %3, %4)").arg(size_mb).arg(hdd_table[i][0]).arg(hdd_table[i][1]).arg(hdd_table[i][2]);
-        QString text = QString::asprintf(tr("%u MB (CHS: %i, %i, %i)").toUtf8().constData(), size_mb, (hdd_table[i][0]), (hdd_table[i][1]), (hdd_table[i][2]));
-        Models::AddEntry(model, text, i);
-    }
-    Models::AddEntry(model, tr("Custom..."), 127);
-    Models::AddEntry(model, tr("Custom (large)..."), 128);
+    // First, create the model containing the list of manufacturer names
+    const auto presetManufacturersModel = createManufacturersModel();
+    ui->comboBoxManPreset->setModel(presetManufacturersModel);
+
+    // Then create the main model that is populated using the json data
+    // We don't directly assign this model to any widgets
+    const auto presetModel = createHddPresetModel();
+
+    // Instead, the proxy model is used for sorting the hdd preset model list
+    // and assigned to the combo box
+    hddPresetModel = createHddPresetProxyModel(presetModel);
+    ui->comboBoxModelPreset->setModel(hddPresetModel);
+
+    // Signal assignments for the preset widgets
+    connect(ui->comboBoxManPreset, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &HarddiskDialog::populatePresetModels);
+    connect(ui->comboBoxModelPreset, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &HarddiskDialog::setPresetParameters);
+    connect(ui->comboBoxModelPreset, QOverload<const QString &>::of(&QComboBox::currentTextChanged), this, &HarddiskDialog::presetTextChanged);
 
     ui->lineEditSize->setValidator(new QIntValidator());
     ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
@@ -99,7 +112,9 @@ HarddiskDialog::HarddiskDialog(bool existing, QWidget *parent)
         ui->lineEditHeads->setEnabled(false);
         ui->lineEditSectors->setEnabled(false);
         ui->lineEditSize->setEnabled(false);
-        ui->comboBoxType->setEnabled(false);
+        ui->sizeSlider->setEnabled(false);
+        ui->comboBoxManPreset->setEnabled(false);
+        ui->comboBoxModelPreset->setEnabled(false);
 
         ui->comboBoxFormat->hide();
         ui->labelFormat->hide();
@@ -127,6 +142,12 @@ HarddiskDialog::HarddiskDialog(bool existing, QWidget *parent)
         ui->comboBoxFormat->setCurrentIndex(DEFAULT_DISK_FORMAT);
         ui->fileField->setselectedFilter(filters.value(DEFAULT_DISK_FORMAT));
     }
+    // QWindowsStyle really wants to make this window larger than it needs to be
+    resize(minimumSize());
+    // Signals for the size slider
+    connect(ui->sizeSlider, &QSlider::valueChanged, this, &HarddiskDialog::sizeSliderChanged);
+    connect(ui->sizeSlider, &QSlider::sliderMoved,  this, &HarddiskDialog::sizeSliderMoved);
+    connect(ui->sizeSlider, &QSlider::rangeChanged, this, &HarddiskDialog::sizeSliderRangeChanged);
 }
 
 HarddiskDialog::~HarddiskDialog()
@@ -168,8 +189,10 @@ HarddiskDialog::on_comboBoxFormat_currentIndexChanged(int index)
         ui->lineEditHeads->setText(tr("(N/A)"));
         ui->lineEditSectors->setText(tr("(N/A)"));
         ui->lineEditSize->setText(tr("(N/A)"));
+        ui->sizeSlider->setEnabled(false);
     } else {
         enabled = true;
+        ui->sizeSlider->setEnabled(true);
         ui->lineEditCylinders->setText(QString::number(cylinders_));
         ui->lineEditHeads->setText(QString::number(heads_));
         ui->lineEditSectors->setText(QString::number(sectors_));
@@ -179,7 +202,6 @@ HarddiskDialog::on_comboBoxFormat_currentIndexChanged(int index)
     ui->lineEditHeads->setEnabled(enabled);
     ui->lineEditSectors->setEnabled(enabled);
     ui->lineEditSize->setEnabled(enabled);
-    ui->comboBoxType->setEnabled(enabled);
 
     if (index < 4) {
         ui->comboBoxBlockSize->hide();
@@ -504,7 +526,6 @@ HarddiskDialog::recalcSelection()
     if ((selection == 127) && (heads_ == 16) && (sectors_ == 63)) {
         selection = 128;
     }
-    ui->comboBoxType->setCurrentIndex(selection);
 }
 
 void
@@ -629,13 +650,14 @@ HarddiskDialog::onExistingFileSelected(const QString &fileName, bool precheck)
     ui->lineEditHeads->setText(QString::number(heads));
     ui->lineEditSectors->setText(QString::number(sectors));
     recalcSize();
-    recalcSelection();
 
     ui->lineEditCylinders->setEnabled(true);
     ui->lineEditHeads->setEnabled(true);
     ui->lineEditSectors->setEnabled(true);
     ui->lineEditSize->setEnabled(true);
-    ui->comboBoxType->setEnabled(true);
+    ui->sizeSlider->setEnabled(true);
+    ui->comboBoxManPreset->setEnabled(true);
+    ui->comboBoxModelPreset->setEnabled(true);
     ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(true);
 }
 
@@ -645,7 +667,20 @@ HarddiskDialog::recalcSize()
     if (disallowSizeModifications)
         return;
     uint64_t size = (static_cast<uint64_t>(cylinders_) * static_cast<uint64_t>(heads_) * static_cast<uint64_t>(sectors_)) << 9;
-    ui->lineEditSize->setText(QString::number(size >> 20));
+    const auto new_size = (size >> 20);
+    ui->lineEditSize->setText(QString::number(new_size));
+    // If needed, change the max value on the slider
+    if(new_size > ui->sizeSlider->maximum()) {
+        ui->sizeSlider->setMaximum(new_size);
+        ui->sizeSlider->setValue(ui->sizeSlider->maximum());
+        return;
+    } else {
+        // Similarly, bring it back down if needed
+        if (ui->sizeSlider->maximum() > DEFAULT_MAX_SIZE_SLIDER && new_size < DEFAULT_MAX_SIZE_SLIDER) {
+            ui->sizeSlider->setMaximum(DEFAULT_MAX_SIZE_SLIDER);
+        }
+        ui->sizeSlider->setSliderPosition(new_size);
+    }
 }
 
 bool
@@ -655,7 +690,6 @@ HarddiskDialog::checkAndAdjustSectors()
         sectors_ = max_sectors;
         ui->lineEditSectors->setText(QString::number(max_sectors));
         recalcSize();
-        recalcSelection();
         return false;
     }
     return true;
@@ -668,7 +702,6 @@ HarddiskDialog::checkAndAdjustHeads()
         heads_ = max_heads;
         ui->lineEditHeads->setText(QString::number(max_heads));
         recalcSize();
-        recalcSelection();
         return false;
     }
     return true;
@@ -681,7 +714,6 @@ HarddiskDialog::checkAndAdjustCylinders()
         cylinders_ = max_cylinders;
         ui->lineEditCylinders->setText(QString::number(max_cylinders));
         recalcSize();
-        recalcSelection();
         return false;
     }
     return true;
@@ -777,13 +809,22 @@ void
 HarddiskDialog::on_lineEditSize_textEdited(const QString &text)
 {
     disallowSizeModifications = true;
-    uint32_t size             = text.toUInt();
+    const int size            = text.toInt();
     /* This is needed to ensure VHD standard compliance. */
     hdd_image_calc_chs(&cylinders_, &heads_, &sectors_, size);
     ui->lineEditCylinders->setText(QString::number(cylinders_));
     ui->lineEditHeads->setText(QString::number(heads_));
     ui->lineEditSectors->setText(QString::number(sectors_));
-    recalcSelection();
+    // Again here we adjust the size slider up and down as necessary
+    if(size > ui->sizeSlider->maximum()) {
+        ui->sizeSlider->setMaximum(size);
+        ui->sizeSlider->setValue(ui->sizeSlider->maximum());
+    } else {
+        if (ui->sizeSlider->maximum() > DEFAULT_MAX_SIZE_SLIDER && size < DEFAULT_MAX_SIZE_SLIDER) {
+            ui->sizeSlider->setMaximum(DEFAULT_MAX_SIZE_SLIDER);
+        }
+        ui->sizeSlider->setValue(size);
+    }
 
     checkAndAdjustCylinders();
     checkAndAdjustHeads();
@@ -798,7 +839,6 @@ HarddiskDialog::on_lineEditCylinders_textEdited(const QString &text)
     cylinders_ = text.toUInt();
     if (checkAndAdjustCylinders()) {
         recalcSize();
-        recalcSelection();
     }
 }
 
@@ -808,7 +848,6 @@ HarddiskDialog::on_lineEditHeads_textEdited(const QString &text)
     heads_ = text.toUInt();
     if (checkAndAdjustHeads()) {
         recalcSize();
-        recalcSelection();
     }
 }
 
@@ -818,36 +857,7 @@ HarddiskDialog::on_lineEditSectors_textEdited(const QString &text)
     sectors_ = text.toUInt();
     if (checkAndAdjustSectors()) {
         recalcSize();
-        recalcSelection();
     }
-}
-
-void
-HarddiskDialog::on_comboBoxType_currentIndexChanged(int index)
-{
-    if (index < 0) {
-        return;
-    }
-
-    if ((index != 127) && (index != 128)) {
-        cylinders_ = hdd_table[index][0];
-        heads_     = hdd_table[index][1];
-        sectors_   = hdd_table[index][2];
-        ui->lineEditCylinders->setText(QString::number(cylinders_));
-        ui->lineEditHeads->setText(QString::number(heads_));
-        ui->lineEditSectors->setText(QString::number(sectors_));
-        recalcSize();
-    } else if (index == 128) {
-        heads_   = 16;
-        sectors_ = 63;
-        ui->lineEditHeads->setText(QString::number(heads_));
-        ui->lineEditSectors->setText(QString::number(sectors_));
-        recalcSize();
-    }
-
-    checkAndAdjustCylinders();
-    checkAndAdjustHeads();
-    checkAndAdjustSectors();
 }
 
 void
@@ -858,4 +868,226 @@ HarddiskDialog::accept()
     else
         setResult(QDialog::Accepted);
     QDialog::done(result());
+}
+
+void
+HarddiskDialog::parsePresetList()
+{
+    if(!presets.isEmpty()) {
+        // Already parsed
+        return;
+    }
+    QFile json_file(":/json/hdd_presets.json");
+    if (!json_file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning("Couldn't open the hdd preset file: error %d", json_file.error());
+        return;
+    }
+    const QString read_file = json_file.readAll();
+    json_file.close();
+
+    const auto json_doc = QJsonDocument::fromJson(read_file.toUtf8());
+
+    if (json_doc.isNull()) {
+        qWarning("Failed to create QJsonDocument, possibly invalid JSON");
+        return;
+    }
+    if (!json_doc.isArray()) {
+        qWarning("JSON does not have the expected format (array in root), cannot continue");
+        return;
+    }
+
+    QJsonArray json_array = json_doc.array();
+
+    for (const auto &val : json_array) {
+        if (auto preset = presetFromJson(val.toObject()); preset.has_value()) {
+            presets.append(preset.value());
+        }
+    }
+}
+
+std::optional<HarddiskDialog::HDDPreset>
+HarddiskDialog::presetFromJson(const QJsonObject &json)
+{
+    // Some basic validation
+    if (
+        !json.contains("id") ||
+        !json.contains("manufacturer") ||
+        !json.contains("model") ||
+        !json.contains("size") ||
+        !json.contains("c") ||
+        !json.contains("h") ||
+        !json.contains("s") ||
+        !json.contains("bus")) {
+        return std::nullopt;
+    }
+
+    // Some models are listed in the json as numbers instead of strings. Convert if necessary.
+    const auto model = json["model"].isDouble() ? QString::number(json["model"].toDouble()) : json["model"];
+
+    return HDDPreset {
+        .id           = json["id"].toInt(),
+        .manufacturer = json["manufacturer"].toString(),
+        .model        = model.toString(),
+        .size         = json["size"].toInt(),
+        .c            = json["c"].toInt(),
+        .h            = json["h"].toInt(),
+        .s            = json["s"].toInt(),
+        .bus          = json["bus"].toString(),
+    };
+}
+
+QStringListModel *
+HarddiskDialog::createManufacturersModel()
+{
+    parsePresetList();
+    const auto presetManufacturersModel = new QStringListModel();
+    QSet<QString> manufacturerSet;
+    for (const auto &preset : presets) {
+        manufacturerSet.insert(preset.manufacturer);
+    }
+    // Add "Generic" for the built-in presets
+    manufacturerSet.insert(tr("Generic"));
+    // Sort the manufacturers
+    QList<QString> manList = manufacturerSet.values();
+    std::sort(manList.begin(), manList.end());
+    manList.prepend(tr("Select a manufacturer"));
+    // Use the sorted list as the model source
+    presetManufacturersModel->setStringList(manList);
+
+    return presetManufacturersModel;
+}
+
+QStandardItemModel *
+HarddiskDialog::createHddPresetModel()
+{
+    parsePresetList();
+    const auto presetModel = new QStandardItemModel();
+    // Populate the presets model
+    for (const auto &preset : presets) {
+        auto     *item = new QStandardItem();
+        const int row  = presetModel->rowCount();
+        presetModel->appendRow(item);
+        auto pmIndex = presetModel->index(row, 0);
+
+        const uint64_t size    = static_cast<uint64_t>(preset.c) * preset.h * preset.s;
+        const uint32_t size_mb = size >> 11LL;
+        auto text = QString(tr("%1 (%2 MB)")).arg(preset.model, QString::number(size_mb));
+
+        presetModel->setData(pmIndex, text, Qt::DisplayRole);
+        presetModel->setData(pmIndex, preset.manufacturer, Manufacturer);
+        presetModel->setData(pmIndex, preset.model, Model);
+        presetModel->setData(pmIndex, preset.size, Size);
+        presetModel->setData(pmIndex, preset.c, Cylinders);
+        presetModel->setData(pmIndex, preset.h, Heads);
+        presetModel->setData(pmIndex, preset.s, Sectors);
+        presetModel->setData(pmIndex, preset.bus, Bus);
+    }
+
+    // Now add the stock hdd_table options to the model as "Generic"
+    for (int i = 0; i < 127; i++) {
+        auto     *item = new QStandardItem();
+        const int row  = presetModel->rowCount();
+        presetModel->appendRow(item);
+        auto pmIndex = presetModel->index(row, 0);
+
+        const uint64_t size    = static_cast<uint64_t>(hdd_table[i][0]) * hdd_table[i][1] * hdd_table[i][2];
+        const uint32_t size_mb = size >> 11LL;
+        QString        display = QString::asprintf(tr("%u MB (%i/%i/%i)").toUtf8().constData(), size_mb, hdd_table[i][0], hdd_table[i][1], hdd_table[i][2]);
+
+        presetModel->setData(pmIndex, display, Qt::DisplayRole);
+        presetModel->setData(pmIndex, tr("Generic"), Manufacturer);
+        presetModel->setData(pmIndex, display, Model);
+        presetModel->setData(pmIndex, size_mb, Size);
+        presetModel->setData(pmIndex, hdd_table[i][0], Cylinders);
+        presetModel->setData(pmIndex, hdd_table[i][1], Heads);
+        presetModel->setData(pmIndex, hdd_table[i][2], Sectors);
+    }
+    return presetModel;
+}
+
+QSortFilterProxyModel *
+HarddiskDialog::createHddPresetProxyModel(QStandardItemModel* sourceModel)
+{
+    const auto hddPresetModel = new QSortFilterProxyModel();
+    hddPresetModel->setSourceModel(sourceModel);
+    hddPresetModel->setSortLocaleAware(true);
+    hddPresetModel->setSortRole(Qt::DisplayRole);
+    hddPresetModel->setFilterFixedString("-invalid-");
+    hddPresetModel->sort(0, Qt::AscendingOrder);
+    return hddPresetModel;
+}
+
+void
+HarddiskDialog::populatePresetModels(const int index) const
+{
+    const auto currentIndex = ui->comboBoxManPreset->model()->index(index, 0);
+    const auto filterNameVal = currentIndex.data();
+    if(filterNameVal.type() != QVariant::String) {
+        return;
+    }
+    const auto filterName = filterNameVal.toString();
+    hddPresetModel->setFilterRole(Manufacturer);
+    hddPresetModel->setFilterKeyColumn(0);
+    hddPresetModel->setFilterFixedString(filterName);
+}
+
+void
+HarddiskDialog::setPresetParameters(const int index)
+{
+    if (index < 0) {
+        return;
+    }
+
+    const auto currentIndex = ui->comboBoxModelPreset->model()->index(index, 0);
+    const auto cylinders    = currentIndex.data(Cylinders).toInt();
+    const auto heads        = currentIndex.data(Heads).toInt();
+    const auto sectors      = currentIndex.data(Sectors).toInt();
+
+    cylinders_ = cylinders;
+    heads_     = heads;
+    sectors_   = sectors;
+
+    ui->lineEditCylinders->setText(QString::number(cylinders_));
+    ui->lineEditHeads->setText(QString::number(heads_));
+    ui->lineEditSectors->setText(QString::number(sectors_));
+    recalcSize();
+}
+
+// The QComboBox::currentTextChanged signal is used and connected here instead of
+// QComboBox::currentIndexChanged. When a manufacturer is selected and the
+// models are populated the model index could still remain the same (such as zero, the first item).
+void
+HarddiskDialog::
+presetTextChanged(const QString &text)
+{
+    setPresetParameters(ui->comboBoxModelPreset->currentIndex());
+}
+
+void
+HarddiskDialog::sizeSliderChanged(int value)
+{
+    // If the values differ, we have arrived here because of the slider being
+    // set interactively
+    if (value != ui->lineEditSize->text().toUInt()) {
+        // Enforce even values for the slider
+        if ((value & 1) == 1) {
+            value++;
+        }
+        ui->lineEditSize->setText(QString::number(value));
+        on_lineEditSize_textEdited(QString::number(value));
+    }
+}
+
+// Reset the preset selection whenever the slider is moved interactively
+void
+HarddiskDialog::sizeSliderMoved(int value) const
+{
+    ui->comboBoxManPreset->setCurrentIndex(0);
+}
+
+// Ensure a consistent amount of slider ticks no matter the range
+void
+HarddiskDialog::sizeSliderRangeChanged(const int min, const int max) const
+{
+    ui->sizeSlider->setTickInterval(max / 16);
 }

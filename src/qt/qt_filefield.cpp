@@ -36,8 +36,6 @@ FileField::FileField(QWidget *parent)
         fileName_ = ui->label->text();
         emit fileTextEntered(ui->label->text(), true);
     });
-
-    this->setFixedWidth(this->sizeHint().width() + ui->pushButton->sizeHint().width());
 }
 
 FileField::~FileField()
