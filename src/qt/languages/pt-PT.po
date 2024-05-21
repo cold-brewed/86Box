@@ -324,6 +324,9 @@ msgstr "Ganho"
 msgid "File name:"
 msgstr "Nome:"
 
+msgid "File name"
+msgstr "Nome"
+
 msgid "Disk size:"
 msgstr "Tamanho:"
 
@@ -572,6 +575,9 @@ msgstr "Cilindros:"
 
 msgid "Size (MB):"
 msgstr "Tamanho (MB):"
+
+msgid "Size"
+msgstr "Tamanho"
 
 msgid "Type:"
 msgstr "Tipo:"

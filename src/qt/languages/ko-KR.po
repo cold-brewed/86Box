@@ -324,6 +324,9 @@ msgstr "증가값"
 msgid "File name:"
 msgstr "파일명:"
 
+msgid "File name"
+msgstr "파일명"
+
 msgid "Disk size:"
 msgstr "디스크 용량:"
 
@@ -572,6 +575,9 @@ msgstr "실린더:"
 
 msgid "Size (MB):"
 msgstr "용량(MB):"
+
+msgid "Size"
+msgstr "용량"
 
 msgid "Type:"
 msgstr "형식:"

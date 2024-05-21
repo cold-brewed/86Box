@@ -324,6 +324,9 @@ msgstr "Wzmacniacz"
 msgid "File name:"
 msgstr "Nazwa pliku:"
 
+msgid "File name"
+msgstr "Nazwa pliku"
+
 msgid "Disk size:"
 msgstr "Rozmiar dysku:"
 
@@ -572,6 +575,9 @@ msgstr "Cylindry:"
 
 msgid "Size (MB):"
 msgstr "Rozmiar (MB):"
+
+msgid "Size"
+msgstr "Rozmiar"
 
 msgid "Type:"
 msgstr "Rodzaj:"

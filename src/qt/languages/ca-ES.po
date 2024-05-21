@@ -324,6 +324,9 @@ msgstr "Guany"
 msgid "File name:"
 msgstr "Nom del fitxer:"
 
+msgid "File name"
+msgstr "Nom del fitxer"
+
 msgid "Disk size:"
 msgstr "Grandària de disc:"
 
@@ -572,6 +575,9 @@ msgstr "Cilindres:"
 
 msgid "Size (MB):"
 msgstr "Mida (MB):"
+
+msgid "Size"
+msgstr "Mida"
 
 msgid "Type:"
 msgstr "Tipus:"

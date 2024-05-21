@@ -324,6 +324,9 @@ msgstr "Hangerő"
 msgid "File name:"
 msgstr "Fájlnév:"
 
+msgid "File name"
+msgstr "Fájlnév"
+
 msgid "Disk size:"
 msgstr "Méret:"
 
@@ -572,6 +575,9 @@ msgstr "Cilinder:"
 
 msgid "Size (MB):"
 msgstr "Méret (MB):"
+
+msgid "Size"
+msgstr "Méret"
 
 msgid "Type:"
 msgstr "Típus:"

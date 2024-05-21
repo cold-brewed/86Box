@@ -324,6 +324,9 @@ msgstr "音量"
 msgid "File name:"
 msgstr "ファイル名:"
 
+msgid "File name"
+msgstr "ファイル名"
+
 msgid "Disk size:"
 msgstr "ディスクサイズ:"
 
@@ -572,6 +575,9 @@ msgstr "シリンダー:"
 
 msgid "Size (MB):"
 msgstr "サイズ(MB):"
+
+msgid "Size"
+msgstr "サイズ"
 
 msgid "Type:"
 msgstr "タイプ:"

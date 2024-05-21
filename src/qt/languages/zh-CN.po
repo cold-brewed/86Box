@@ -324,6 +324,9 @@ msgstr "增益"
 msgid "File name:"
 msgstr "文件名:"
 
+msgid "File name"
+msgstr "文件名"
+
 msgid "Disk size:"
 msgstr "磁盘大小:"
 
@@ -572,6 +575,9 @@ msgstr "柱面(C):"
 
 msgid "Size (MB):"
 msgstr "大小 (MB):"
+
+msgid "Size"
+msgstr "大小"
 
 msgid "Type:"
 msgstr "类型:"

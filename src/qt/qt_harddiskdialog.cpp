@@ -971,7 +971,7 @@ HarddiskDialog::createHddPresetModel()
 
         const uint64_t size    = static_cast<uint64_t>(preset.c) * preset.h * preset.s;
         const uint32_t size_mb = size >> 11LL;
-        auto text = QString(tr("%1 (%2 MB)")).arg(preset.model, QString::number(size_mb));
+        auto text = QString(tr("%1 (%2 %3)")).arg(preset.model, QString::number(size_mb), tr("MB"));
 
         presetModel->setData(pmIndex, text, Qt::DisplayRole);
         presetModel->setData(pmIndex, preset.manufacturer, Manufacturer);
@@ -992,7 +992,7 @@ HarddiskDialog::createHddPresetModel()
 
         const uint64_t size    = static_cast<uint64_t>(hdd_table[i][0]) * hdd_table[i][1] * hdd_table[i][2];
         const uint32_t size_mb = size >> 11LL;
-        QString        display = QString::asprintf(tr("%u MB (%i/%i/%i)").toUtf8().constData(), size_mb, hdd_table[i][0], hdd_table[i][1], hdd_table[i][2]);
+        QString        display = QString::asprintf(tr("%u MB (CHS: %i, %i, %i)").toUtf8().constData(), size_mb, hdd_table[i][0], hdd_table[i][1], hdd_table[i][2]);
 
         presetModel->setData(pmIndex, display, Qt::DisplayRole);
         presetModel->setData(pmIndex, tr("Generic"), Manufacturer);

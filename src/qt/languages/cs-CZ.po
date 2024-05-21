@@ -324,6 +324,9 @@ msgstr "Zesílení"
 msgid "File name:"
 msgstr "Název souboru:"
 
+msgid "File name"
+msgstr "Název souboru"
+
 msgid "Disk size:"
 msgstr "Velikost disku:"
 
@@ -572,6 +575,9 @@ msgstr "Cylindry:"
 
 msgid "Size (MB):"
 msgstr "Velikost (MB):"
+
+msgid "Size"
+msgstr "Velikost"
 
 msgid "Type:"
 msgstr "Typ:"

@@ -324,6 +324,9 @@ msgstr "Artırma"
 msgid "File name:"
 msgstr "Dosya adı:"
 
+msgid "File name"
+msgstr "Dosya adı"
+
 msgid "Disk size:"
 msgstr "Disk boyutu:"
 
@@ -572,6 +575,9 @@ msgstr "Silindirler:"
 
 msgid "Size (MB):"
 msgstr "Boyut (MB):"
+
+msgid "Size"
+msgstr "Boyut"
 
 msgid "Type:"
 msgstr "Tip:"
