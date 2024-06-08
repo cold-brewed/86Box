@@ -213,6 +213,9 @@ int      other_ide_present = 0;                                   /* IDE control
 int      other_scsi_present = 0;                                  /* SCSI controllers from non-SCSI cards are
                                                                      present */
 
+char vmm_path[1024] = { '\0'}; /* TEMPORARY - VM manager path to scan for VMs */
+int  vmm_enabled = 0;
+
 /* Statistics. */
 extern int mmuflush;
 extern int readlnum;
@@ -535,8 +538,8 @@ usage:
 #ifdef _WIN32
             printf("-D or --debug           - force debug output logging\n");
 #endif
-#if 0
-            printf("-E or --nographic       - forces the old behavior\n");
+#if 1
+	    printf("-E or --vmmpath    - vm manager path\n");
 #endif
             printf("-F or --fullscreen      - start in fullscreen mode\n");
             printf("-G or --lang langid     - start with specified language (e.g. en-US, or system)\n");
@@ -568,13 +571,14 @@ usage:
         } else if (!strcasecmp(argv[c], "--debug") || !strcasecmp(argv[c], "-D")) {
             force_debug = 1;
 #endif
-#ifdef ENABLE_NG
-        } else if (!strcasecmp(argv[c], "--nographic") || !strcasecmp(argv[c], "-E")) {
-            /* Currently does nothing, but if/when we implement a built-in manager,
-               it's going to force the manager not to run, allowing the old usage
-               without parameter. */
-            ng = 1;
-#endif
+//#ifdef ENABLE_NG
+        } else if (!strcasecmp(argv[c], "--vmmpath") ||
+                   !strcasecmp(argv[c], "-E")) {
+            /* Using this variable for vm manager path
+               Temporary solution!*/
+            if ((c+1) == argc) goto usage;
+            strcpy(vmm_path, argv[++c]);
+            //#endif
         } else if (!strcasecmp(argv[c], "--fullscreen") || !strcasecmp(argv[c], "-F")) {
             start_in_fullscreen = 1;
         } else if (!strcasecmp(argv[c], "--logfile") || !strcasecmp(argv[c], "-L")) {
@@ -847,6 +851,10 @@ usage:
     }
 
     pclog("# Configuration file: %s\n#\n\n", cfg_path);
+    if (strlen(vmm_path) != 0) {
+        vmm_enabled = 1;
+        pclog("# VM Manager enabled. Path: %s\n", vmm_path);
+    }
     /*
      * We are about to read the configuration file, which MAY
      * put data into global variables (the hard- and floppy
